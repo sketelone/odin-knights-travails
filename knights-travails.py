@@ -1,14 +1,9 @@
 
-
 #class defining a square on the chessboard
 class Square:
     #class constructor
-    def __init__(self, coord=(), right="", left="", top="", bot=""):
+    def __init__(self, coord=[]):
         self.coord = coord
-        self.right = right
-        self.left = left
-        self.top = top
-        self.bot = bot
 
 #class defining an nxm chessboard
 class Board:
@@ -23,23 +18,7 @@ class Board:
         squares = []
         for i in range(self.rows):
             for j in range(self.cols):
-                square = Square((i,j))
-                if (0 < j):
-                    square.left = (i, j-1)
-                else:
-                    square.left = None
-                if (j < 3):
-                    square.right = (i, j+1)
-                else:
-                    square.right = None
-                if (0 < i):
-                    square.top = (i-1, j)
-                else:
-                    square.top = None
-                if (i < 3):
-                    square.bot = (i+1, j)
-                else:
-                    square.bot = None
+                square = Square([i,j])
                 squares.append(square)
         return squares
     
@@ -64,42 +43,100 @@ class Knight:
         ]
         return moves
 
+#class defining a node
+class Node:
+    #class constructor
+    def __init__(self, value = None, parent = None, leaves = []):
+        self.value = value
+        self.parent = parent
+        self.leaves = leaves
 
-def knightMoves(knight, target, board, prevPath):
-    # path =  kwargs.get('path', [knight.current_pos])
-    path = prevPath
-    print(knight.current_pos, path)
+def knightMoves(knight, target, board):
     #if target is off the board, return false
     if not any(square.coord == target for square in board):
         print('target not on the board')
         return False
-    if not any(square.coord == knight.current_pos for square in board):
-        print('potential move not on the board')
-        return False
-    if (knight.current_pos == target):
-        return target
     else: 
-        #move
-        for move in knight.moves:
-            nextKnight = Knight(knight.current_pos)
-            path.append(knightMoves(nextKnight, target, board, path))
+        #build tree of shortest path to each tile starting from current position
+        root = constructTree(knight, board)
+        print(root.value, len(root.leaves))
+        #find path to target
+        path = findPath(root, target)
     return path
 
+#returns an array of all nodes in the tree
+def preorder (node, array):
+    array.append(node.value)
+    for leaf in node.leaves:
+        preorder(leaf, array)
+    return array
+
+#finds the target node in the graph and returns an array of path from root to target
+def findPath(root, target):
+    #initalize variables
+    path = []   #path of nodes from root to target
+    queue = []  #queue of nodes to be visited
+
+    #initalize node as root
+    node = root
+    #while current node is not target
+    while not node.value == target:
+        #add all leaves to queue
+        for leaf in node.leaves:
+            queue.append(leaf)
+        #move to next node in queue
+        node = queue[0]
+        queue.remove(queue[0])
+    #once target is found, add it to path
+    path.append(target)
+    #while current node is not root, add parent to path and move to parent
+    while not node.parent == None:
+        path.append(node.parent.value)
+        node = node.parent
+    #reverse path to be in root --> target order
+    path.reverse()
+    return path
+
+#constructs a graph of all shortest routes to all other squares on the board from starting square
+def constructTree(knight, board):
+
+    #initialize variables
+    n = len(board)  #total number of nodes
+    n_nodes = 1     #current number of nodes
+    treeArray = [knight.current_pos] #array of nodes in tree
+    queue = []      #queue of nodes to visit
+
+    #define the root as the starting position
+    root = Node(knight.current_pos)
+    #initialize node at root
+    node = root
+
+    #while all nodes have not been added to the tree
+    while not n_nodes == n:
+        #for all possible moves
+        for move in knight.moves:
+            #if move is on the board, not already in the tree and not already in the queue, 
+            # add it to the tree array, create a new node and add it to the tree, and increment num of nodes
+            if any(square.coord == move for square in board) and move not in treeArray and not any(item.value == move for item in queue):
+                treeArray.append(move)
+                node.leaves.append(Node(move, node, []))
+                n_nodes += 1
+        #add all nodes to the queue
+        for leaf in node.leaves:
+            queue.append(leaf)
+        #move to the next node in the queue
+        node = queue[0]
+        knight = Knight(queue[0].value)
+        queue.remove(queue[0])
+    return root
 
 #define 8x8 board of squares
 board = Board(8,8)
 
-# for square in board.squares:
-#     print (square.coord)
-# print (board.squares[1].coord, board.squares[1].right, board.squares[1].left, board.squares[1].top, board.squares[1].bot)
+#define knight with starting position
+knight = Knight([0,0])
 
-knight = Knight([4,4])
-# print(knight.current_pos)
-# print(knight.moves)
-
-print(knightMoves(knight, (7,7), board.squares, [knight.current_pos]))
-
-
+print(knightMoves(knight, [7,7], board.squares))
 
 
 
